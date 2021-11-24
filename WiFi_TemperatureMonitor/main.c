@@ -22,7 +22,15 @@ int main(void)
     UCA0CTL0 |= UCSYNC;      // asynchronous mode
     UCA0CTL1 |= UCSSEL_2;       // BRCLK = SMCLK
 
-    /* CONFIGURE THE BAUD RATE */
+    /* ********************************************************************
+     * CONFIGURE THE BAUD RATE FOR UART
+     * 115200
+     * UCOS16 = 0 (low-frequency mode)
+     * UCBRX = 9
+     * UCBRSX = 1
+     * ********************************************************************/
+    UCA0BR0 = 0x9;  /* low-byte BRCLK prescaler */
+    UCA0MCTL |= 00000010;   /* sets BRS */
 
 
   /************************************************************************
