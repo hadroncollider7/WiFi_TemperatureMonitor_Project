@@ -22,11 +22,12 @@ int main(void)
     UCA0CTL0 |= UCSYNC;      // asynchronous mode
     UCA0CTL1 |= UCSSEL_2;       // BRCLK = SMCLK
 
-    /* Set the baud rate */
+    /* CONFIGURE THE BAUD RATE */
 
 
-
-//  //*************** CONFIGURE PORTS *********************************
+  /************************************************************************
+   * CONFIGURE PORTS
+   ************************************************************************/
 //  P6SEL |= BIT6;     // Port 6.6 set to analog function
 //  P6DIR &= ~BIT6;     // Configure p6.6 as input
 //
