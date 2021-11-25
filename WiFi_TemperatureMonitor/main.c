@@ -1,4 +1,5 @@
 #include <msp430.h>
+#include <math.h>
 
 /**
  * main.c
@@ -11,8 +12,8 @@ int main(void)
     /*************************************************************************
     * SETUP ADC
     * The conversion will be stored in the ADC12MEM0 register.
-    * Note: The ADC12IEs and ADC12IFGs corresponds to the MEMx registers, not
-    *   the ADC input channel.
+    * Note: The ADC12IEs and ADC12IFGs corresponds to the MEMx (we're using
+    *   MEM0) registers, not the ADC input channel.
     * Module ADC12_A
     * Analog channel A6
     * Test: send data to WiFi
@@ -93,7 +94,6 @@ int main(void)
 //         __no_operation();              /* for debugger */
 //     }
 
-    return 0;
 }
 
 /**************************************************************************
@@ -102,12 +102,109 @@ int main(void)
 #pragma vector = ADC12_VECTOR
 __interrupt void ADC12_ISR(void)
 {
+    /* Convert ADC to Celsius */
+    const double R0 = 9750;       /* Resistance at reference temperature */
+    const double B = 3936;        /* Datasheet coefficient */
+    const double T0 = 298.15;     /* Reference temperature */
+    double R;
+    double T_Kelvin;
+    double T_Celcius;
+    double T_Fah;
+
+    R = (3.3*10000*pow(2,12))/(ADC12MEM0*2.5) - 10000;
+    T_Kelvin = (T0*B)/(T0*log(R/R0)+B);
+    T_Celcius = T_Kelvin - 273.15;
+    T_Fah = T_Celcius*9/5 + 32;
+
+    /**********************************************************
+     * Convert number into ASCII
+     * Two digits, decimals dopped.
+     * Temperature range: 0 - 99 degrees Fahrenheit
+     * Error: +/- 1 degree
+     *********************************************************/
+    unsigned int digit_2;
+    unsigned int digit_1;
+    digit_2 = T_Fah/10;
+    digit_1 = T_Fah - digit_2*10;
+
+    switch (digit_2)
+    {
+        case 0:
+            digit_2 = 0x30;
+            break;
+        case 1:
+            digit_2 = 0x31;
+            break;
+        case 2:
+            digit_2 = 0x32;
+            break;
+        case 3:
+            digit_2 = 0x33;
+            break;
+        case 4:
+            digit_2 = 0x34;
+            break;
+        case 5:
+            digit_2 = 0x35;
+            break;
+        case 6:
+            digit_2 = 0x36;
+            break;
+        case 7:
+            digit_2 = 0x37;
+            break;
+        case 8:
+            digit_2 = 0x38;
+            break;
+        case 9:
+            digit_2 = 0x39;
+            break;
+        default:
+            digit_2 = 0x36;
+    }
+
+    switch (digit_1)
+        {
+        case 0:
+            digit_1 = 0x30;
+            break;
+        case 1:
+            digit_1 = 0x31;
+            break;
+        case 2:
+            digit_1 = 0x32;
+            break;
+        case 3:
+            digit_1 = 0x33;
+            break;
+        case 4:
+            digit_1 = 0x34;
+            break;
+        case 5:
+            digit_1 = 0x35;
+            break;
+        case 6:
+            digit_1 = 0x36;
+            break;
+        case 7:
+            digit_1 = 0x37;
+            break;
+        case 8:
+            digit_1 = 0x38;
+            break;
+        case 9:
+            digit_1 = 0x39;
+            break;
+        default:
+            digit_1 = 0x36;
+        }
+
     while (!(UCA0IFG & UCTXIFG));
-    UCA0TXBUF = '6';
+    UCA0TXBUF = digit_2;
     while (!(UCA0IFG & UCTXIFG));
-    UCA0TXBUF = '9';
+    UCA0TXBUF = digit_1;
     while (!(UCA0IFG & UCTXIFG));
-    UCA0TXBUF = ';';
+    UCA0TXBUF = 0x3B;
     while (!(UCA0IFG & UCTXIFG));
     ADC12IE &= ~ADC12IFG0;
 }
