@@ -5,6 +5,8 @@
  * main.c
  */
 
+volatile unsigned int i = 0;
+
 int main(void)
 {
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
@@ -37,12 +39,12 @@ int main(void)
     ADC12IFG &= ~ADC12IFG0;         /* Clear ADC12MEM0 interrupt request flag */
     ADC12IE |= ADC12IE0;            /* Enable interrupt for the ADC12MEM0 register */
 
-    volatile unsigned int i;
-    i = 0x30;
-    do i--;
-    while (i != 0);                 /* Delay for reference start-up */
+    volatile unsigned int j;
+    j = 0x30;
+    do j--;
+    while (j != 0);                 /* Delay for reference start-up */
 
-    ADC12CTL0 |= ADC12ENC;          /* Enable conversion */
+    ADC12CTL0 |= ADC12ENC;          /* Enable ADC conversion */
 
     /************************************************************************
      * SETUP UP USCI REGISTERS
@@ -70,34 +72,85 @@ int main(void)
     UCA0BR0 = 0x9;          /* low-byte BRCLK prescaler */
     UCA0MCTL |= UCBRS_1;    /* sets BRS */
 
+    /**************************************************************************
+     * TIMER A0 MODULE
+     * Description: Set up a timer so that the microcontroller monitors
+     *  the temperature every ten minutes.
+     * Clock: ACLK, 32768 Hz.
+     *  ACLK will be divided by 8 to get a clock frequency of 4096 Hz.
+     **************************************************************************/
+    TA0CTL |= TASSEL_1+ID_3+TAIE;
+    TA0CTL |= TACLR;        /* Clears TAR and divider logic (divider settings
+                                unchanged. Automatically resets */
+    TA0CTL &= ~TAIFG;       /* Clear interrupt request flag */
+
+    __bis_SR_register(GIE);
+    __no_operation();
+
+    /* TAKE INITIAL MEASUREMENT BEFORE STARTING TIMER */
 
     /*************************************************************************
      * ACTIVATE UART
      * Transmit data via the Transmit Buffer Register UCA0TXBUF
      *************************************************************************/
-     UCA0CTL1 &= ~UCSWRST;     /* Enable USCI*/
+    UCA0CTL1 &= ~UCSWRST;     /* Enable USCI*/
 
-     //************ ENABLE INTERRUPTS AND START CONVERSION ********************
+    //********************** START CONVERSION ********************
+    ADC12CTL0 |= ADC12SC;           /* Start conversion */
+        j = 0x30;
+        do j--;
+        while (j != 0);             /* Time delay */
+//    while (!(ADC12IFG & BIT0));     /* Wait for conversion to finish */
+    __no_operation();
 
-     ADC12CTL0 |= ADC12SC;           /* Start conversion */
-     while (!(ADC12IFG & BIT0));
-     __no_operation();
-     __bis_SR_register(GIE);
-     __no_operation();
-
-     while(1);
-//     while (1)
-//     {
-//         ADC12CTL0 |= ADC12SC;          // start conversion
-//
-//         __bis_SR_register(GIE);
-//         __no_operation();              /* for debugger */
-//     }
+    /* BEGIN TIMER AND ENTER LOW POWER MODE 0 */
+    TA0CTL |= MC_2;
+//    __bis_SR_register(LPM0);
+//    __no_operation();
+    while(1);
 
 }
 
+/******************************************************************************
+ * TIMER A0 INTERRUPT SERVICE ROUTINE
+ ******************************************************************************/
+#pragma vector = TIMER0_A1_VECTOR
+__interrupt void TIMER0_A1_ISR(void)
+{
+    if (i >= 36)     // i >= 36 for normal operation
+    {
+        /* Let 8 seconds pass to reach 10 minutes
+         * Note: There is not enough bits to count to 8 seconds.
+         * The following lines of code need to be fixed.*/
+        volatile unsigned int j;
+        j = 0xFFFF;
+        do j--;
+        while(j != 0);
+        i = 0;      /* Reset i */
+
+        /* Take and measurement, convert to digital, and send to WiFi module */
+
+
+        //************ ENABLE INTERRUPTS AND START CONVERSION ********************
+
+        ADC12CTL0 |= ADC12SC;           /* Start conversion */
+            j = 0x30;
+            do j--;
+            while (j != 0);             /* Time delay */
+//        while (!(ADC12IFG & BIT0));     /* Wait for conversion to finish */
+        __no_operation();
+        TA0CTL &= ~TAIFG;   /* Clear TA0 interrupt request flag */
+    }
+    else
+    {
+        i++;
+        TA0CTL &= ~TAIFG;   /* Clear TA0 interrupt request flag */
+    }
+}
+
+
 /**************************************************************************
- *  ADC12 ISR
+ *  ADC12 INTERRUPT SERVICE ROUTINE
  ***************************************************************************/
 #pragma vector = ADC12_VECTOR
 __interrupt void ADC12_ISR(void)
@@ -118,7 +171,7 @@ __interrupt void ADC12_ISR(void)
 
     /**********************************************************
      * Convert number into ASCII
-     * Two digits, decimals dopped.
+     * Two digits, decimals dropped.
      * Temperature range: 0 - 99 degrees Fahrenheit
      * Error: +/- 1 degree
      *********************************************************/
@@ -206,5 +259,5 @@ __interrupt void ADC12_ISR(void)
     while (!(UCA0IFG & UCTXIFG));
     UCA0TXBUF = 0x3B;
     while (!(UCA0IFG & UCTXIFG));
-    ADC12IE &= ~ADC12IFG0;
+    ADC12IFG &= ~ADC12IFG0;
 }
