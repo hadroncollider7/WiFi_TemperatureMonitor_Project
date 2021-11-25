@@ -17,6 +17,7 @@ int main(void)
     * Analog channel A6
     * Test: send data to WiFi
     * Clock select: ADC12OSC (MODCLK), 5 Mhz
+    * Resolution of the conversion result: 8-bits
     *************************************************************************/
     /************************************************************************
      * Configure ports
@@ -41,47 +42,49 @@ int main(void)
     while (i != 0);                 /* Delay for reference start-up */
 
     ADC12CTL0 |= ADC12ENC;          /* Enable conversion */
-    ADC12CTL0 |= ADC12SC;                   // Start conversion
-    while (!(ADC12IFG & BIT0));
-    __no_operation();
 
-//    /************************************************************************
-//     * SETUP UP USCI REGISTERS
-//     * Data format: 115200N81
-//     * Low frequency mode
-//     * BRCLK ~ 1 Mhz
-//     * TXO: P3.3
-//     * RXI: P3.4
-//     * Asynchronous mode
-//     ***********************************************************************/
-//    P3SEL |= BIT3 + BIT4;   /* configure p3.3, p3.4 to function as tx,rx */
-//
-//    /* Configure control registers */
-//    UCA0CTL1 |= UCSWRST;    /* enable configuration of control registers */
-//    UCA0CTL1 |= UCSSEL_2;   /* BRCLK = SMCLK */
-//
-//
-//    /* ********************************************************************
-//     * Configure the baud rate for UART
-//     * 115200
-//     * UCOS16 = 0 (low-frequency mode)
-//     * UCBRX = 9
-//     * UCBRSX = 1
-//     * ********************************************************************/
-//    UCA0BR0 = 0x9;          /* low-byte BRCLK prescaler */
-//    UCA0MCTL |= UCBRS_1;    /* sets BRS */
-//
-//
-//    /*************************************************************************
-//     * ACTIVATE UART
-//     * Transmit data via the Transmit Buffer Register UCA0TXBUF
-//     *************************************************************************/
-//     UCA0CTL1 &= ~UCSWRST;     /* Enable USCI*/
-//
-////     UCA0TXBUF = 0x66;
-//
-//     //************ ENABLE INTERRUPTS AND START CONVERSION ********************
-//
+    /************************************************************************
+     * SETUP UP USCI REGISTERS
+     * Data format: 115200N81
+     * Low frequency mode
+     * BRCLK = 1.048576 Mhz
+     * TXO: P3.3
+     * RXI: P3.4
+     * Asynchronous mode
+     ***********************************************************************/
+    P3SEL |= BIT3 + BIT4;   /* configure p3.3, p3.4 to function as tx,rx */
+
+    /* Configure control registers */
+    UCA0CTL1 |= UCSWRST;    /* enable configuration of control registers */
+    UCA0CTL1 |= UCSSEL_2;   /* BRCLK = SMCLK */
+
+
+    /* ********************************************************************
+     * Configure the baud rate for UART
+     * 115200
+     * UCOS16 = 0 (low-frequency mode)
+     * UCBRX = 9
+     * UCBRSX = 1
+     * ********************************************************************/
+    UCA0BR0 = 0x9;          /* low-byte BRCLK prescaler */
+    UCA0MCTL |= UCBRS_1;    /* sets BRS */
+
+
+    /*************************************************************************
+     * ACTIVATE UART
+     * Transmit data via the Transmit Buffer Register UCA0TXBUF
+     *************************************************************************/
+     UCA0CTL1 &= ~UCSWRST;     /* Enable USCI*/
+
+     //************ ENABLE INTERRUPTS AND START CONVERSION ********************
+
+     ADC12CTL0 |= ADC12SC;           /* Start conversion */
+     while (!(ADC12IFG & BIT0));
+     __no_operation();
+     __bis_SR_register(GIE);
+     __no_operation();
+
+     while(1);
 //     while (1)
 //     {
 //         ADC12CTL0 |= ADC12SC;          // start conversion
@@ -89,16 +92,22 @@ int main(void)
 //         __bis_SR_register(GIE);
 //         __no_operation();              /* for debugger */
 //     }
-//
+
     return 0;
 }
-//
-///**************************************************************************
-// *  ADC12 ISR
-// ***************************************************************************/
-//#pragma vector = ADC12_VECTOR
-//__interrupt void ADC12_ISR(void)
-//{
-//    UCA0TXBUF = ADC12MEM0;
-//    ADC12IE &= ~ADC12IFG0;
-//}
+
+/**************************************************************************
+ *  ADC12 ISR
+ ***************************************************************************/
+#pragma vector = ADC12_VECTOR
+__interrupt void ADC12_ISR(void)
+{
+    while (!(UCA0IFG & UCTXIFG));
+    UCA0TXBUF = '6';
+    while (!(UCA0IFG & UCTXIFG));
+    UCA0TXBUF = '9';
+    while (!(UCA0IFG & UCTXIFG));
+    UCA0TXBUF = ';';
+    while (!(UCA0IFG & UCTXIFG));
+    ADC12IE &= ~ADC12IFG0;
+}
