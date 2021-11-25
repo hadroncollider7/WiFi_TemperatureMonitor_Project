@@ -13,14 +13,16 @@ int main(void)
      * Data format: 115200N81
      * Low frequency mode
      * BRCLK ~ 1 Mhz
+     * TXO: P3.3
+     * RXI: P3.4
+     * Asynchronous mode
      ***********************************************************************/
-    P3SEL |= BIT3 + BIT4;   // Congfigure p3.3, p3.4 as tx,rx
-    P3DIR |= BIT3 + BIT4;   // configure ports as outputs
+    P3SEL |= BIT3 + BIT4;   /* configure p3.3, p3.4 to function as tx,rx */
 
     /* CONFIGURE CONTROL REGISTERS */
-    UCA0CTL1 |= UCSWRST;    // enable configuration of control registers
-    UCA0CTL0 |= UCSYNC;      // asynchronous mode
-    UCA0CTL1 |= UCSSEL_2;       // BRCLK = SMCLK
+    UCA0CTL1 |= UCSWRST;    /* enable configuration of control registers */
+    UCA0CTL1 |= UCSSEL_2;   /* BRCLK = SMCLK */
+
 
     /* ********************************************************************
      * CONFIGURE THE BAUD RATE FOR UART
@@ -29,9 +31,17 @@ int main(void)
      * UCBRX = 9
      * UCBRSX = 1
      * ********************************************************************/
-    UCA0BR0 = 0x9;  /* low-byte BRCLK prescaler */
-    UCA0MCTL |= 00000010;   /* sets BRS */
+    UCA0BR0 = 0x9;          /* low-byte BRCLK prescaler */
+    UCA0MCTL |= UCBRS_1;   /* sets BRS */
 
+
+    /*************************************************************************
+     * Activate UART
+     * Transmit data via the Transmit Buffer Register UCA0TXBUF
+     *************************************************************************/
+     UCA0CTL1 &= ~UCSWRST;     /* Enable USCI*/
+
+     UCA0TXBUF = 0x66;
 
   /************************************************************************
    * CONFIGURE PORTS

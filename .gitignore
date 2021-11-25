@@ -2,3 +2,5 @@
 .jxbrowser.userdata
 RemoteSystemsTempFiles
 dvt
+*.prefs
+*.launch
