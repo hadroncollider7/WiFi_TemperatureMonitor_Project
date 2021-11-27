@@ -252,7 +252,7 @@ __interrupt void ADC12_ISR(void)
             digit_1 = 0x36;
         }
 
-    while (!(UCA0IFG & UCTXIFG));
+    while (!(UCA0IFG & UCTXIFG));       /* Wait for TX buffer to empty */
     UCA0TXBUF = digit_2;
     while (!(UCA0IFG & UCTXIFG));
     UCA0TXBUF = digit_1;
