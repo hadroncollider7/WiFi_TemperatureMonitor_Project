@@ -5,7 +5,7 @@
  * main.c
  */
 
-volatile unsigned int i = 0;
+volatile unsigned int i = 0;    /* Global variable */
 
 int main(void)
 {
@@ -20,7 +20,7 @@ int main(void)
     * Analog channel A6
     * Test: send data to WiFi
     * Clock select: ADC12OSC (MODCLK), 5 Mhz
-    * Resolution of the conversion result: 8-bits
+    * Resolution of the conversion result: 12-bits
     *************************************************************************/
     /************************************************************************
      * Configure ports
@@ -29,7 +29,7 @@ int main(void)
 
     //************* SET CONTROL REGISTERS ***************
     REFCTL0 &= ~REFMSTR;     // clear REFMSTR bit to give control of the reference generator to ADC12
-    ADC12CTL0 |= ADC12REF2_5V + ADC12REFON + ADC12ON + ADC12SHT0_2;     // SHT = 16 cycles
+    ADC12CTL0 |= ADC12REF2_5V + ADC12REFON + ADC12ON + ADC12SHT0_2;     // SHT (sample and hold time) = 16 cycles
     ADC12CTL1 |= ADC12SHS_0 + ADC12SHP;
         // sample hold source is ADC12SC bit
         // Sample and hold pulse mode
@@ -53,13 +53,13 @@ int main(void)
      * BRCLK = 1.048576 Mhz
      * TXO: P3.3
      * RXI: P3.4
-     * Asynchronous mode
+     * Asynchronous mode (UART)
      ***********************************************************************/
-    P3SEL |= BIT3 + BIT4;   /* configure p3.3, p3.4 to function as tx,rx */
+    P3SEL |= BIT3 + BIT4;   /* configure p3.3, p3.4 to function as TX, RX */
 
     /* Configure control registers */
-    UCA0CTL1 |= UCSWRST;    /* enable configuration of control registers */
-    UCA0CTL1 |= UCSSEL_2;   /* BRCLK = SMCLK */
+    UCA0CTL1 |= UCSWRST;    /* Enable configuration of control registers */
+    UCA0CTL1 |= UCSSEL_2;   /* BRCLK = SMCLK (1.048576 Mhz)*/
 
 
     /* ********************************************************************
@@ -100,12 +100,12 @@ int main(void)
         j = 0x30;
         do j--;
         while (j != 0);             /* Time delay */
-//    while (!(ADC12IFG & BIT0));     /* Wait for conversion to finish */
+//    while (!(ADC12IFG & BIT0));   /* Wait for conversion to finish */
     __no_operation();
 
-    /* BEGIN TIMER AND ENTER LOW POWER MODE 0 */
+    /* BEGIN TIMER */
     TA0CTL |= MC_2;
-//    __bis_SR_register(LPM0);
+//    __bis_SR_register(LPM0);      /* Can't use b/c it seems to reset global variable when exiting LPM*/
 //    __no_operation();
     while(1);
 
